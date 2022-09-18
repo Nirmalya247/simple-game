@@ -1,0 +1,23 @@
+<html>
+	<head>
+        <meta http-equiv="Content-Security-Policy" content="connect-src 'self';">
+		<script src="/tools/jquery.js"></script>
+		<script>
+            var exampleSocket;
+            function messageStart() {
+                exampleSocket = new WebSocket("ws://10.217.50.182:9603/", "echo-protocol");
+                exampleSocket.onmessage = (event) => {
+                    console.log("msg received: ", event.data);
+                }
+            }
+            function sendMessage(msg) {
+                exampleSocket.send(JSON.stringify(msg));
+            }
+		</script>
+	</head>
+	<body onload="messageStart()">
+		<div>
+
+		</div>
+	</body>
+</html>
