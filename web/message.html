@@ -14,7 +14,7 @@
                 return result;
             }
             function messageStart() {
-                exampleSocket = new WebSocket("ws://nsgames.herokuapp.com/", "echo-protocol");
+                exampleSocket = new WebSocket("wss://nsgames.herokuapp.com/", "echo-protocol");
                 // exampleSocket = new WebSocket("ws://10.217.50.182:9603/", "echo-protocol");
                 // exampleSocket = new WebSocket("ws://localhost:9603/", "echo-protocol");
                 playerName = makeid(4);
