@@ -4,14 +4,16 @@ var serveStatic = require('serve-static');
 var http = require('http');
 var fs = require("fs");
 var WebSocketServer = require('websocket').server;
+const path = require('node:path');
 
 
 var app = express();
-app.use('/web', express.static('./web'));
+// app.use('/*', express.static(path.join(__dirname, 'web')));
+app.use(express.static(path.join(__dirname, 'web')));
 //app.get('/test', serveTest);
 // app.all('/*', express.static('./web'));
 // app.all('/web', express.static('./web'));
-var server =  http.createServer(app)
+var server =  http.createServer(app);
 server.listen(process.env.PORT || 9603);
 
 /*
@@ -29,6 +31,7 @@ function serveHtml(req, res) {
 		res.send(data);
 	});
 }
+
 
 wsServer = new WebSocketServer({
     httpServer: server,

@@ -1,7 +1,7 @@
 <html>
 	<head>
         <meta http-equiv="Content-Security-Policy" content="connect-src 'self';">
-		<script src="/web/tools/jquery.js"></script>
+		<script src="/tools/jquery.js"></script>
 		<script>
             var exampleSocket, playerName;
             function makeid(length) {
@@ -14,9 +14,9 @@
                 return result;
             }
             function messageStart() {
-                exampleSocket = new WebSocket("ws://nsgames.herokuapp.com/", "echo-protocol");
+                // exampleSocket = new WebSocket("ws://nsgames.herokuapp.com/", "echo-protocol");
                 // exampleSocket = new WebSocket("ws://10.217.50.182:9603/", "echo-protocol");
-                // exampleSocket = new WebSocket("ws://localhost:9603/", "echo-protocol");
+                exampleSocket = new WebSocket("ws://localhost:9603/", "echo-protocol");
                 playerName = makeid(4);
                 exampleSocket.onmessage = (event) => {
                     var msg = JSON.parse(event.data);
