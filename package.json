@@ -4,8 +4,8 @@
   "description": "test history manager",
   "main": "main.js",
   "scripts": {
-    "start": "node index.js",
-    "test": "node index.js"
+    "start": "node main.js",
+    "test": "node main.js"
   },
   "repository": {
     "type": "git",
