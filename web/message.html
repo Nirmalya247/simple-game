@@ -1,23 +1,59 @@
 <html>
 	<head>
         <meta http-equiv="Content-Security-Policy" content="connect-src 'self';">
-		<script src="/tools/jquery.js"></script>
+		<script src="/web/tools/jquery.js"></script>
 		<script>
-            var exampleSocket;
+            var exampleSocket, playerName;
+            function makeid(length) {
+                var result           = '';
+                var characters       = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+                var charactersLength = characters.length;
+                for ( var i = 0; i < length; i++ ) {
+                  result += characters.charAt(Math.floor(Math.random() * charactersLength));
+                }
+                return result;
+            }
             function messageStart() {
-                exampleSocket = new WebSocket("ws://10.217.50.182:9603/", "echo-protocol");
+                exampleSocket = new WebSocket("ws://nsgames.herokuapp.com/", "echo-protocol");
+                // exampleSocket = new WebSocket("ws://10.217.50.182:9603/", "echo-protocol");
+                // exampleSocket = new WebSocket("ws://localhost:9603/", "echo-protocol");
+                playerName = makeid(4);
                 exampleSocket.onmessage = (event) => {
+                    var msg = JSON.parse(event.data);
+                    if (msg.data && msg.func == 'receivedMessage') {
+                        if (msg.playerName == playerName) {
+                            $('#msgBody').append('<p>from: you, message: ' + msg.data + '</p>');
+                        } else {
+                            $('#msgBody').append('<p>from: ' + msg.playerName + ', message: ' + msg.data + '</p>');
+                        }
+                    }
                     console.log("msg received: ", event.data);
                 }
+
+                function waitForSocketConnection(){
+                    setTimeout(
+                        function () {
+                            if (exampleSocket.readyState === 1) {
+                                console.log("Connection is made")
+                                var msg = { func: 'addPlayer', gameName: 'message/test', playerName: playerName, maxPlayer: 2, gameState: { } };
+                                exampleSocket.send(JSON.stringify(msg));
+                            } else {
+                                console.log("wait for connection...")
+                                waitForSocketConnection();
+                            }
+                
+                        }, 5);
+                }
+                waitForSocketConnection();
             }
             function sendMessage() {
-                var msg = document.getElementById('msgText').value;
-                exampleSocket.send(msg);
+                var msg = { func: 'sendMessage', gameName: 'message/test', playerName: playerName, data: document.getElementById('msgText').value };
+                exampleSocket.send(JSON.stringify(msg));
             }
 		</script>
 	</head>
 	<body onload="messageStart()">
-        <div class="msgBody">
+        <div id="msgBody">
 
         </div>
         <div class="txtBody">

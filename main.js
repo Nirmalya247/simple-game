@@ -20,6 +20,8 @@ function serveTest(req, res) {
 }
 */
 
+
+
 function serveHtml(req, res) {
 	fs.readFile('./web/index.html', function(err, data) {
 		if (err) { common.errorTEXT(req, res); return; }
@@ -50,7 +52,10 @@ wsServer.on('request', function(request) {
         if (message.type === 'utf8') {
 			var msg = JSON.parse(message.utf8Data);
 			if (msg.func == 'addPlayer') {
-				addPlayer(connection, msg.gameName, msg.maxPlayer, msg.gameState);
+				addPlayer(connection, msg.gameName, msg.playerName, msg.maxPlayer, msg.gameState);
+			} else if (msg.func == 'sendMessage') {
+				msg.func = 'receivedMessage';
+				sendMessage(connection, msg.gameName, msg.playerName, msg);
 			}
             console.log('Received Message: ' + message.utf8Data);
             // connection.sendUTF(message.utf8Data);
@@ -66,29 +71,46 @@ wsServer.on('request', function(request) {
     });
 });
 
-games = { }
-palyersData = { }
+var games = { }
+var playersData = { }
 
 function newGame(gameName, maxPlayer, gameState) {
 	games[gameName] = { gameName: gameName, maxPlayer: maxPlayer, players: { }, gameState: gameState };
 }
-function addPlayer(connection, gameName, maxPlayer, gameState) {
-	var address = connection.remoteAddress;
+function addPlayer(connection, gameName, playerName, maxPlayer, gameState) {
+	var address = connection.remoteAddress + ":" + playerName;
 	if (!games[gameName]) {
 		newGame(gameName, maxPlayer, gameState);
 	}
 	if (!playersData[address]) {
+		var added = false;
+		var playerNo = -1;
 		for (var i = 0; i < games[gameName].maxPlayer; i++) {
 			if (!games[gameName].players[i]) {
-				games[gameName].players[i] = connection;
+				games[gameName].players[i] = address;
+				added = true;
+				playerNo = i;
+				playersData[address] = [ connection, gameName, i ];
 				break;
 			}
 		}
-		var msg = { func: 'gameStateUpdate', data: games[gameName] }
-		connection.sendUTF(JSON.stringify(msg));
+		if (added) {
+			var msg = { func: 'gameStateUpdate', data: games[gameName] }
+			connection.sendUTF(JSON.stringify(msg));
+			msg = { func: 'playerAdded', playerNo: playerNo, data: games[gameName] }
+			for (var i = 0; i < games[gameName].maxPlayer; i++) {
+				if (games[gameName].players[i]) {
+					playersData[games[gameName].players[i]][0].sendUTF(JSON.stringify(msg));
+				}
+			}
+		}
 	} else {
 
 	}
+	console.log('adding player');
+	console.log(games);
+	console.log(playersData);
+	console.log('------');
 }
 function removePlayer(connection) {
 	var address = connection.remoteAddress;
@@ -96,10 +118,16 @@ function removePlayer(connection) {
 
 	}
 }
-function sendMessage(connection, gameName, msg) {
-	var address = connection.remoteAddress;
-	if (playersData[address] == gameName) {
-
+function sendMessage(connection, gameName, playerName, msg) {
+	var address = connection.remoteAddress + ":" + playerName;
+	console.log('sending message from', address, playersData[address]);
+	if (playersData[address] && playersData[address][1] == gameName) {
+		for (var i = 0; i < games[gameName].maxPlayer; i++) {
+			console.log('to', games[gameName].players[i]);
+			if (games[gameName].players[i]) {
+				playersData[games[gameName].players[i]][0].sendUTF(JSON.stringify(msg));
+			}
+		}
 	}
 }
 
