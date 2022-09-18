@@ -35,7 +35,7 @@
                         function () {
                             if (exampleSocket.readyState === 1) {
                                 console.log("Connection is made")
-                                var msg = { func: 'addPlayer', gameName: 'message/test', playerName: playerName, maxPlayer: 2, gameState: { } };
+                                var msg = { func: 'addPlayer', gameName: 'message/test', playerName: playerName, maxPlayer: 10, gameState: { } };
                                 exampleSocket.send(JSON.stringify(msg));
                             } else {
                                 console.log("wait for connection...")
