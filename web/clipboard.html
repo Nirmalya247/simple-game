@@ -68,9 +68,9 @@
                 });
             }
             function messageStart() {
-                // exampleSocket = new WebSocket("wss://nsgames.herokuapp.com/", "echo-protocol");
+                exampleSocket = new WebSocket("wss://nsgames.herokuapp.com/", "echo-protocol");
                 // exampleSocket = new WebSocket("ws://10.217.50.182:9603/", "echo-protocol");
-                exampleSocket = new WebSocket("ws://10.217.69.187:9603/", "echo-protocol");
+                // exampleSocket = new WebSocket("ws://10.217.69.187:9603/", "echo-protocol");
                 // exampleSocket = new WebSocket("ws://localhost:9603/", "echo-protocol");
                 playerName = $('.playerName').val();
                 exampleSocket.onmessage = (event) => {
