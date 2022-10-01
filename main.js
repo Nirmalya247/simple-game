@@ -1,15 +1,26 @@
 var bodyParser = require('body-parser');
 var express = require('express');
 var serveStatic = require('serve-static');
+const cors = require('cors');
 var http = require('http');
 var fs = require("fs");
 var WebSocketServer = require('websocket').server;
 const path = require('node:path');
+const player = require('./websocket/player');
+const files = require('./web-http/file');
 
 
 var app = express();
-// app.use('/*', express.static(path.join(__dirname, 'web')));
+app.use(bodyParser({ limit: '10mb' }));
+app.use(bodyParser.urlencoded({ extended: true }));
+app.use(bodyParser.json());
+app.use(cors());
+
+app.post('/files/addFile', files.addFile);
+app.post('/files/getFile', files.getFile);
 app.use(express.static(path.join(__dirname, 'web')));
+
+// app.use('/*', express.static(path.join(__dirname, 'web')));
 //app.get('/test', serveTest);
 // app.all('/*', express.static('./web'));
 // app.all('/web', express.static('./web'));
@@ -55,83 +66,30 @@ wsServer.on('request', function(request) {
         if (message.type === 'utf8') {
 			var msg = JSON.parse(message.utf8Data);
 			if (msg.func == 'addPlayer') {
-				addPlayer(connection, msg.gameName, msg.playerName, msg.maxPlayer, msg.gameState);
+				player.addPlayer(connection, msg.gameName, msg.playerName, msg.maxPlayer, msg.gameState);
 			} else if (msg.func == 'sendMessage') {
 				msg.func = 'receivedMessage';
-				sendMessage(connection, msg.gameName, msg.playerName, msg);
+				player.gamesFunctions.sendMessage(msg.gameName, msg.playerName, msg, msg.toPlayer);
+			} else if (msg.func == 'updateGameState') {
+				// msg.func = 'receivedMessage';
+				player.gamesFunctions.updateGameState(msg.gameName, msg.cmd, msg.key, msg.data, msg.modify);
 			}
-            console.log('Received Message: ' + message.utf8Data);
+            // console.log('Received Message: ' + message.utf8Data);
             // connection.sendUTF(message.utf8Data);
         }
         else if (message.type === 'binary') {
-            console.log('Received Binary Message of ' + message.binaryData.length + ' bytes');
+            // console.log('Received Binary Message of ' + message.binaryData.length + ' bytes');
             // connection.sendBytes(message.binaryData);
         }
     });
     connection.on('close', function(reasonCode, description) {
-		removePlayer(connection);
+		player.removePlayer(connection);
         console.log((new Date()) + ' Peer ' + connection.remoteAddress + ' disconnected.');
     });
 });
 
-var games = { }
-var playersData = { }
 
-function newGame(gameName, maxPlayer, gameState) {
-	games[gameName] = { gameName: gameName, maxPlayer: maxPlayer, players: { }, gameState: gameState };
-}
-function addPlayer(connection, gameName, playerName, maxPlayer, gameState) {
-	var address = connection.remoteAddress + ":" + playerName;
-	if (!games[gameName]) {
-		newGame(gameName, maxPlayer, gameState);
-	}
-	if (!playersData[address]) {
-		var added = false;
-		var playerNo = -1;
-		for (var i = 0; i < games[gameName].maxPlayer; i++) {
-			if (!games[gameName].players[i]) {
-				games[gameName].players[i] = address;
-				added = true;
-				playerNo = i;
-				playersData[address] = [ connection, gameName, i ];
-				break;
-			}
-		}
-		if (added) {
-			var msg = { func: 'gameStateUpdate', data: games[gameName] }
-			connection.sendUTF(JSON.stringify(msg));
-			msg = { func: 'playerAdded', playerNo: playerNo, data: games[gameName] }
-			for (var i = 0; i < games[gameName].maxPlayer; i++) {
-				if (games[gameName].players[i]) {
-					playersData[games[gameName].players[i]][0].sendUTF(JSON.stringify(msg));
-				}
-			}
-		}
-	} else {
 
-	}
-	console.log('adding player');
-	console.log(games);
-	console.log(playersData);
-	console.log('------');
-}
-function removePlayer(connection) {
-	var address = connection.remoteAddress;
-	if (playersData[address]) {
 
-	}
-}
-function sendMessage(connection, gameName, playerName, msg) {
-	var address = connection.remoteAddress + ":" + playerName;
-	console.log('sending message from', address, playersData[address]);
-	if (playersData[address] && playersData[address][1] == gameName) {
-		for (var i = 0; i < games[gameName].maxPlayer; i++) {
-			console.log('to', games[gameName].players[i]);
-			if (games[gameName].players[i]) {
-				playersData[games[gameName].players[i]][0].sendUTF(JSON.stringify(msg));
-			}
-		}
-	}
-}
 
-console.log('path: http://localhost:9603');
+console.log('path: http://localhost:' + (process.env.PORT || 9603));

@@ -1,0 +1,151 @@
+<html>
+	<head>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <meta http-equiv="Content-Security-Policy" content="connect-src 'self';">
+		<script src="/tools/jquery.js"></script>
+        <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/highlight.js/11.6.0/styles/default.min.css">
+        <script src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/11.6.0/highlight.min.js"></script>
+		<style>
+            body {
+                padding: 0;
+                margin: 0;
+            }
+            .players {
+
+            }
+            .player {
+
+            }
+            .imgsback {
+                width: 100%;
+                overflow-x: scroll;
+            }
+            .imgs {
+                display: flex;
+            }
+            .plimg {
+                width: 100%;
+                display: inline;
+            }
+            .codesback {
+                width: 100%;
+                overflow: scroll;
+                height: 50%;
+            }
+            .codes {
+                display: -webkit-box;
+            }
+            .plcode {
+                white-space: pre-wrap;
+                width: 100%;
+                display: block;
+            }
+        </style>
+        <script>
+            var exampleSocket, playerName, gameName = 'message/test';
+            function makeid(length) {
+                var result           = '';
+                var characters       = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+                var charactersLength = characters.length;
+                for ( var i = 0; i < length; i++ ) {
+                  result += characters.charAt(Math.floor(Math.random() * charactersLength));
+                }
+                return result;
+            }
+            
+            function codeCopyMsg(fileName) {
+                var msg = { func: 'sendMessage', gameName: gameName, playerName: playerName, data: fileName, cmd: 'copy-clip', toPlayer: playerName + '-pc-' };
+                exampleSocket.send(JSON.stringify(msg));
+            }
+            function addFile(fileName) {
+                console.log('add file', fileName);
+                $.post('/files/getFile', { gameName: gameName, playerName: playerName, fileName: fileName }, (data) => {
+                    if (data.fileType == 'code') {
+                        $('.' + data.playerName + '-codes').append('<div class="plcode"><button onclick="codeCopyMsg(\'' + fileName + '\');">copy</button>' + hljs.highlightAuto(data.data).value + '</div>');
+                    } else if (data.fileType == 'img') {
+                        $('.' + data.playerName + '-imgs').append('<img class="plimg" src="data:image/png;base64, ' + data.data + '" alt="' + data.fileName + '" />');
+                    }
+                });
+            }
+            function messageStart() {
+                // exampleSocket = new WebSocket("wss://nsgames.herokuapp.com/", "echo-protocol");
+                // exampleSocket = new WebSocket("ws://10.217.50.182:9603/", "echo-protocol");
+                exampleSocket = new WebSocket("ws://10.217.69.187:9603/", "echo-protocol");
+                // exampleSocket = new WebSocket("ws://localhost:9603/", "echo-protocol");
+                playerName = $('.playerName').val();
+                exampleSocket.onmessage = (event) => {
+                    var msg = JSON.parse(event.data);
+                    if (msg.data && msg.func == 'receivedMessage') {
+                        if (msg.dataType == 'txt') {
+                            if (msg.playerName == playerName) {
+                                $('#msgBody').append('<p>from: you, message: ' + msg.data + '</p>');
+                            } else {
+                                $('#msgBody').append('<p>from: ' + msg.playerName + ', message: ' + msg.data + '</p>');
+                            }
+                        } else if (msg.dataType == 'img') {
+                            $('#msgBody').append('<img style="width:100px;" src="data:image/png;base64, ' + msg.data + '" alt="Red dot" />');
+                        }
+                    } else if (msg.func == 'fileAdded') {
+                        addFile(msg.fileName);
+                    } else if (msg.func == 'playerAdded' && msg.playerName.indexOf('-pc-') > -1) {
+                        $('#players').append('<div class="' + msg.playerName + ' player"><span>' + msg.playerName + '</span><div class="imgsback"><div class="' + msg.playerName + '-imgs imgs"></div></div><div class="codesback"><div class="' + msg.playerName + '-codes codes"></div></div></div>');
+                    } else if (msg.func == 'playerAdded' && msg.playerName == playerName) {
+                        for (var i = 0; i < msg.data.maxPlayer; i++) {
+                            if (msg.data.players[i] && msg.data.players[i].indexOf('-pc-') > -1) {
+                                var tPlayerName = msg.data.players[i];
+                                $('#players').append('<div class="' + tPlayerName + ' player"><span>' + tPlayerName + '</span><div class="imgsback"><div class="' + tPlayerName + '-imgs imgs"></div></div><div class="codesback"><div class="' + tPlayerName + '-codes codes"></div></div></div>');
+                                if (msg.data.gameState[tPlayerName]) {
+                                    if (msg.data.gameState[tPlayerName].img) {
+                                        for (var j = 0; j < msg.data.gameState[tPlayerName].img.length; j++) {
+                                            addFile(msg.data.gameState[tPlayerName].img[j]);
+                                        }
+                                    }
+                                    if (msg.data.gameState[tPlayerName].code) {
+                                        for (var j = 0; j < msg.data.gameState[tPlayerName].code.length; j++) {
+                                            addFile(msg.data.gameState[tPlayerName].code[j]);
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    console.log("msg received: ", event.data);
+                }
+
+                function waitForSocketConnection(){
+                    setTimeout(
+                        function () {
+                            if (exampleSocket.readyState === 1) {
+                                console.log("Connection is made")
+                                var msg = { func: 'addPlayer', gameName: gameName, playerName: playerName, maxPlayer: 10, gameState: { } };
+                                exampleSocket.send(JSON.stringify(msg));
+                            } else {
+                                console.log("wait for connection...")
+                                waitForSocketConnection();
+                            }
+                
+                        }, 5);
+                }
+                waitForSocketConnection();
+            }
+            function sendMessage() {
+                var msg = { func: 'sendMessage', gameName: gameName, playerName: playerName, data: document.getElementById('msgText').value };
+                exampleSocket.send(JSON.stringify(msg));
+            }
+            function sendSnap() {
+                var msg = { func: 'sendMessage', gameName: gameName, playerName: playerName, data: 'snap-screen', cmd: 'snap-screen', toPlayer: playerName + '-pc-' };
+                exampleSocket.send(JSON.stringify(msg));
+            }
+		</script>
+	</head>
+	<body>
+        <div class="playerInfo">
+            <input class="playerName">
+            <button class="connect" onclick="messageStart()">connect</button>
+            <button class="snap" onclick="sendSnap()">snap</button>
+        </div>
+        <div id="players">
+
+        </div>
+	</body>
+</html>
